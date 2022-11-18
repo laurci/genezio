@@ -1,0 +1,169 @@
+No modules instrumentation has been defined, nothing will be patched
+@opentelemetry/instrumentation-grpc Module @grpc/grpc-js has been loaded before @opentelemetry/instrumentation-grpc so it might not work, please initialize it before requiring @grpc/grpc-js
+Exporter "otlp" requested through environment variable is unavailable.
+HELLO
+Papacostea
+MY ASS
+HELLO
+Papacostea
+MY ASS
+{
+  traceId: '4f080339558feff8ea4577e16321bdb9',
+  parentId: '35701cbce6b5cb7d',
+  name: 'middleware - query',
+  id: '749869fb8e596f33',
+  kind: 0,
+  timestamp: 1668681747932015,
+  duration: 294,
+  attributes: {
+    'http.route': '/',
+    'express.name': 'query',
+    'express.type': 'middleware'
+  },
+  status: { code: 0 },
+  events: [],
+  links: []
+}
+{
+  traceId: '4f080339558feff8ea4577e16321bdb9',
+  parentId: '35701cbce6b5cb7d',
+  name: 'middleware - expressInit',
+  id: '7293a310a66678b5',
+  kind: 0,
+  timestamp: 1668681747932700,
+  duration: 216,
+  attributes: {
+    'http.route': '/',
+    'express.name': 'expressInit',
+    'express.type': 'middleware'
+  },
+  status: { code: 0 },
+  events: [],
+  links: []
+}
+{
+  traceId: '4f080339558feff8ea4577e16321bdb9',
+  parentId: '35701cbce6b5cb7d',
+  name: 'request handler - /',
+  id: '496d913bded70063',
+  kind: 0,
+  timestamp: 1668681747933098,
+  duration: 111,
+  attributes: {
+    'http.route': '/',
+    'express.name': '/',
+    'express.type': 'request_handler'
+  },
+  status: { code: 0 },
+  events: [],
+  links: []
+}
+{
+  traceId: '4f080339558feff8ea4577e16321bdb9',
+  parentId: undefined,
+  name: 'GET /',
+  id: '35701cbce6b5cb7d',
+  kind: 1,
+  timestamp: 1668681747929997,
+  duration: 7228,
+  attributes: {
+    'http.url': 'http://localhost:8080/',
+    'http.host': 'localhost:8080',
+    'net.host.name': 'localhost',
+    'http.method': 'GET',
+    'http.target': '/',
+    'http.user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:106.0) Gecko/20100101 Firefox/106.0',
+    'http.flavor': '1.1',
+    'net.transport': 'ip_tcp',
+    'net.host.ip': '::1',
+    'net.host.port': 8080,
+    'net.peer.ip': '::1',
+    'net.peer.port': 55482,
+    'http.status_code': 304,
+    'http.status_text': 'NOT MODIFIED',
+    'http.route': ''
+  },
+  status: { code: 0 },
+  events: [],
+  links: []
+}
+{
+  traceId: '5d58399b0915a83bc4582d20a246b4de',
+  parentId: 'd971e89d49e8bc9c',
+  name: 'middleware - query',
+  id: '835ecbca6fbfee9d',
+  kind: 0,
+  timestamp: 1668681750963379,
+  duration: 85,
+  attributes: {
+    'http.route': '/',
+    'express.name': 'query',
+    'express.type': 'middleware'
+  },
+  status: { code: 0 },
+  events: [],
+  links: []
+}
+{
+  traceId: '5d58399b0915a83bc4582d20a246b4de',
+  parentId: 'd971e89d49e8bc9c',
+  name: 'middleware - expressInit',
+  id: '116581fb7155b01f',
+  kind: 0,
+  timestamp: 1668681750963643,
+  duration: 73,
+  attributes: {
+    'http.route': '/',
+    'express.name': 'expressInit',
+    'express.type': 'middleware'
+  },
+  status: { code: 0 },
+  events: [],
+  links: []
+}
+{
+  traceId: '5d58399b0915a83bc4582d20a246b4de',
+  parentId: 'd971e89d49e8bc9c',
+  name: 'request handler - /',
+  id: 'f24b3d247cb795ff',
+  kind: 0,
+  timestamp: 1668681750963873,
+  duration: 27,
+  attributes: {
+    'http.route': '/',
+    'express.name': '/',
+    'express.type': 'request_handler'
+  },
+  status: { code: 0 },
+  events: [],
+  links: []
+}
+{
+  traceId: '5d58399b0915a83bc4582d20a246b4de',
+  parentId: undefined,
+  name: 'GET /',
+  id: 'd971e89d49e8bc9c',
+  kind: 1,
+  timestamp: 1668681750963166,
+  duration: 2932,
+  attributes: {
+    'http.url': 'http://localhost:8080/',
+    'http.host': 'localhost:8080',
+    'net.host.name': 'localhost',
+    'http.method': 'GET',
+    'http.target': '/',
+    'http.user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:106.0) Gecko/20100101 Firefox/106.0',
+    'http.flavor': '1.1',
+    'net.transport': 'ip_tcp',
+    'net.host.ip': '::1',
+    'net.host.port': 8080,
+    'net.peer.ip': '::1',
+    'net.peer.port': 55482,
+    'http.status_code': 304,
+    'http.status_text': 'NOT MODIFIED',
+    'http.route': ''
+  },
+  status: { code: 0 },
+  events: [],
+  links: []
+}

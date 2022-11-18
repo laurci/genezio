@@ -37,6 +37,25 @@ import {
 import { getProjectConfiguration } from "./utils/configuration";
 import log from 'loglevel';
 
+import * as otelExporter from "@opentelemetry/exporter-trace-otlp-http"
+import * as opentelemetry from "@opentelemetry/sdk-node";
+import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
+import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
+
+// For troubleshooting, set the log level to DiagLogLevel.DEBUG
+diag.setLogger(new DiagConsoleLogger());
+
+const sdk = new opentelemetry.NodeSDK({
+  // traceExporter: new otelExporter.OTLPTraceExporter({
+  //   // optional - default url is http://localhost:4318/v1/traces
+  //   url: "<your-otlp-endpoint>/v1/traces",
+  traceExporter: new opentelemetry.tracing.ConsoleSpanExporter(),
+  instrumentations: [getNodeAutoInstrumentations()]
+});
+
+sdk.start()
+
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
 
@@ -237,6 +256,8 @@ program
   .action(async (options: any) => {
     setLogLevel(options.verbose);
     const authToken = await readToken(true).catch(() => undefined);
+
+    diag.info("HELLO");
 
     if (!authToken) {
       log.info(
