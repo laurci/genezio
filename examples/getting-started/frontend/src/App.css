@@ -1,0 +1,17 @@
+body {
+  background-color: #9477c4 !important;
+  font-family: 'Source Sans Pro', sans-serif !important;
+}
+
+.card {
+  border-radius: 15px !important;
+}
+
+h1, h2 {
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.footer {
+  background-color: #5f4c80 !important;
+}

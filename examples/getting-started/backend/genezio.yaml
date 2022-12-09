@@ -1,0 +1,9 @@
+name: getting-started3
+sdk:
+  language: js
+  runtime: browser
+  path: ./../frontend/src/backend-sdk
+classes:
+  - path: HelloGettingStarted.js
+    type: jsonrpc
+    methods: []
