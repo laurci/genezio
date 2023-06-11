@@ -1,6 +1,7 @@
 import log from "loglevel";
 import { NodeJsBundler } from "../bundlers/javascript/nodeJsBundler";
 import { NodeTsBundler } from "../bundlers/typescript/nodeTsBundler";
+import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler";
 import express from "express";
 import chokidar from "chokidar";
 import cors from "cors";
@@ -314,6 +315,10 @@ function getBundler(
     }
     case ".dart": {
       bundler = new DartBundler();
+      break;
+    }
+    case ".kt": {
+      bundler = new KotlinBundler();
       break;
     }
     default: {
@@ -637,9 +642,9 @@ function reportSuccess(
 
 function getFunctionUrl(baseUrl: string, methodType: string, className: string, methodName: string): string {
   if (methodType === "http") {
-      return `${baseUrl}/${className}/${methodName}`;
+    return `${baseUrl}/${className}/${methodName}`;
   } else {
-      return `${baseUrl}/${className}`;
+    return `${baseUrl}/${className}`;
   }
 }
 

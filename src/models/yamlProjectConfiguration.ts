@@ -18,7 +18,7 @@ export enum Language {
   ts = "ts",
   swift = "swift",
   python = "python",
-  dart = "dart"
+  dart = "dart",
 }
 
 export class YamlSdkConfiguration {
