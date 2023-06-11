@@ -25,6 +25,8 @@ import { AccessDependenciesPlugin } from "../bundler.interface";
 import { bundle } from "../../utils/webpack";
 import { debugLogger } from "../../utils/logging";
 import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
+import { ModuleOptions } from "webpack";
+import { EsbuildPlugin } from "esbuild-loader";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);
@@ -105,7 +107,7 @@ export class NodeTsBundler implements BundlerInterface {
 
 
         // eslint-disable-next-line no-async-promise-executor
-        const module = {
+        const module: ModuleOptions = {
             rules: [
                 {
                     test: /\.tsx?$/,
@@ -114,7 +116,7 @@ export class NodeTsBundler implements BundlerInterface {
                             loader: "esbuild-loader",
                             options: {
                                 tsconfig: "tsconfig.json",
-                                target: "es2015",
+                                target: "es2020",
                             }
                         }
                     ],
@@ -138,7 +140,7 @@ export class NodeTsBundler implements BundlerInterface {
             mode,
             [webpackNodeExternals()],
             module,
-            mode === "development" ? undefined : [new ForkTsCheckerWebpackPlugin()],
+            mode === "development" ? [new EsbuildPlugin()] : [new ForkTsCheckerWebpackPlugin(), new EsbuildPlugin()],
             tempFolderPath,
             outputFile,
             resolve,

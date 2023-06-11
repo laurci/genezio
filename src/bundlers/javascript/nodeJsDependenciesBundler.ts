@@ -3,6 +3,8 @@ import { createTemporaryFolder, deleteFolder, getFileDetails } from "../../utils
 import { AccessDependenciesPlugin, BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
 import path from "path";
 import { bundle } from "../../utils/webpack";
+import { ModuleOptions } from "webpack";
+import { EsbuildPlugin } from "esbuild-loader";
 
 export class NodeJsDependenciesBundler implements BundlerInterface {
   async #getNodeModulesJs(
@@ -12,13 +14,29 @@ export class NodeJsDependenciesBundler implements BundlerInterface {
     const outputFile = `${name}-processed.js`;
     const temporaryFolder = await createTemporaryFolder();
     const dependencies: string[] = [];
+    const module: ModuleOptions = {
+      rules: [
+          {
+              test: /\.jsx?$/,
+              use: [
+                  {
+                      loader: "esbuild-loader",
+                      options: {
+                          target: "es2015",
+                      }
+                  }
+              ],
+              exclude: /really\.html/
+          }
+      ]
+  };
 
     await bundle(
       "./" + filePath,
       "production",
       [],
-      undefined,
-      [new NodePolyfillPlugin(), new AccessDependenciesPlugin(dependencies, process.cwd())],
+      module,
+      [new NodePolyfillPlugin(), new AccessDependenciesPlugin(dependencies, process.cwd()), new EsbuildPlugin()],
       temporaryFolder,
       outputFile,
       {

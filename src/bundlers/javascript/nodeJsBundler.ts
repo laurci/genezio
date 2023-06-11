@@ -22,6 +22,10 @@ import log from "loglevel";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import { bundle } from "../../utils/webpack";
 import { debugLogger } from "../../utils/logging";
+import { ModuleOptions } from "webpack";
+import { EsbuildPlugin } from "esbuild-loader";
+import esbuild, { BuildResult, Plugin } from "esbuild";
+import { nodeExternalsPlugin } from "esbuild-node-externals";
 
 export class NodeJsBundler implements BundlerInterface {
   async #copyDependencies(dependenciesInfo: any, tempFolderPath: string, mode: "development" | "production") {
@@ -81,34 +85,80 @@ export class NodeJsBundler implements BundlerInterface {
     tempFolderPath: string,
     mode: "development" | "production"
   ): Promise<void> {
-    const outputFile = `module.js`;
+    const outputFile = `module.mjs`;
 
     // delete module.js file if it exists
     if (fs.existsSync(path.join(tempFolderPath, outputFile))) {
       fs.unlinkSync(path.join(tempFolderPath, outputFile));
     }
 
-    // eslint-disable-next-line no-async-promise-executor
-    const output: any = await bundle(
-      "./" + filePath,
-      mode,
-      [webpackNodeExternals()],
-      {
-        rules: [
-          {
-            test: /\.html$/,
-            loader: "dumb-loader",
-            exclude: /really\.html/
-          }
-        ]
-      },
-      undefined,
-      tempFolderPath,
-      outputFile
-    );
+    const module: ModuleOptions = {
+      rules: [
+        // {
+        //     test: /\.jsx?$/,
+        //     use: [
+        //         {
+        //             loader: "esbuild-loader",
+        //             options: {
+        //                 target: "es2015",
+        //             }
+        //         }
+        //     ],
+        //     exclude: /really\.html/
+        // },
+        {
+          test: /\.html$/,
+          loader: "dumb-loader",
+          exclude: /really\.html/
+        }
+      ]
+    };
 
-    if (output != undefined) {
-      output.forEach((error: any) => {
+    // Write a esbuild plugin that appends the following lines to the top of the file after it is bundled
+    // import { createRequire } from 'module';
+    // const require = createRequire(import.meta.url);
+    const supportImport: Plugin = {
+      name: 'esbuild-plugin',
+      setup(build) {
+        build.onLoad({ filter: /\.m?js$/ }, async (args) => {
+          const contents = await fs.promises.readFile(args.path, 'utf8')
+          return {
+            contents: `import { createRequire } from 'module';
+          const require = createRequire(import.meta.url);
+          ${contents}`,
+            loader: 'js'
+          }
+        })
+      }
+    }
+
+    console.log("Bundling mode: " + mode + " " + tempFolderPath)
+    // eslint-disable-next-line no-async-promise-executor
+    const output: BuildResult = await esbuild.build(
+      {
+        entryPoints: [filePath],
+        bundle: true,
+        format: "esm",
+        // target: "es2015",
+        platform: "node",
+        outfile: path.join(tempFolderPath, outputFile),
+        plugins: [nodeExternalsPlugin(), supportImport],
+      }
+    )
+    // const output: any = await bundle(
+    //   "./" + filePath,
+    //   mode,
+    //   [webpackNodeExternals()],
+    //   module, 
+    //   [],
+    //   tempFolderPath,
+    //   outputFile
+    // );
+
+    if (output.errors.length > 0) {
+      output.errors.forEach((error: any) => {
+        // if (output != undefined) {
+        //   output.forEach((error: any) => {
         // log error red
         log.error("\x1b[31m", "Syntax error:");
 
@@ -116,9 +166,9 @@ export class NodeJsBundler implements BundlerInterface {
           log.info(
             "\x1b[37m",
             "file: " +
-              error.moduleIdentifier?.split("|")[1] +
-              ":" +
-              error.loc?.split(":")[0]
+            error.moduleIdentifier?.split("|")[1] +
+            ":" +
+            error.loc?.split(":")[0]
           );
         } else {
           log.info(
@@ -187,11 +237,11 @@ export class NodeJsBundler implements BundlerInterface {
     ]);
 
     debugLogger.debug(`[NodeJSBundler] Copy non js files and node_modules for file ${input.path}.`)
-    // 2. Copy non js files and node_modules and write index.js file
+    // 2. Copy non js files and node_modules and write index.mjs file
     await Promise.all([
       this.#copyNonJsFiles(temporaryFolder),
       mode === "production" ? this.#copyDependencies(input.extra!.dependenciesInfo, temporaryFolder, mode) : Promise.resolve(),
-      writeToFile(temporaryFolder, "index.js", lambdaHandler(`"${input.configuration.name}"`))
+      writeToFile(temporaryFolder, "index.mjs", lambdaHandler(`"${input.configuration.name}"`))
     ]);
 
     // 3. Delete type: module from package.json
