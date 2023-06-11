@@ -16,7 +16,7 @@
     "checkChangesInVariables": "./scripts/checkConstants",
     "checkUnwantedLogs": "./scripts/checkUnwantedLogs",
     "release": "npm run build && npm publish",
-    "test": "jest --testPathPattern tests"
+    "test": "jest --detectOpenHandles --testPathPattern tests"
   },
   "files": [
     "/build"

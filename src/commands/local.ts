@@ -1,5 +1,6 @@
 import log from "loglevel";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
+import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import express from "express";
 import chokidar from "chokidar";
 import cors from "cors";
@@ -320,6 +321,10 @@ function getBundler(
       bundler = new DartBundler();
       break;
     }
+    case ".kt": {
+      bundler = new KotlinBundler();
+      break;
+    }
     default: {
       log.error(
         `Unsupported language ${classConfiguration.language}. Skipping class `
@@ -532,7 +537,7 @@ function sendResponse(res: any, httpResponse: any) {
     if (Buffer.isBuffer(httpResponse.body)) {
       res.end(JSON.stringify(httpResponse.body.toJSON()));
     } else {
-      res.end(httpResponse.body ? httpResponse.body : "");
+      res.send(httpResponse.body ? httpResponse.body : "");
     }
   }
 }

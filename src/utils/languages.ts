@@ -1,1 +1,1 @@
-export const languages: string[] = ["js", "ts", "swift", "python", "dart"];
+export const languages: string[] = ["js", "ts", "swift", "python", "dart", "kt"];

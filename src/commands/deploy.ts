@@ -8,6 +8,7 @@ import { DartBundler } from "../bundlers/dart/dartBundler.js";
 import { NodeJsBinaryDependenciesBundler } from "../bundlers/node/nodeJsBinaryDependenciesBundler.js";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
 import { REACT_APP_BASE_URL } from "../constants.js";
+import { KotlinBundler } from "../bundlers/kotlin/kotlinBundler.js";
 import {
   GENEZIO_NOT_AUTH_ERROR_MSG,
   GENEZIO_NO_CLASSES_FOUND
@@ -228,6 +229,10 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
           bundler = new DartBundler();
           break;
         }
+        case ".kt": {
+          bundler = new KotlinBundler();
+          break;
+        }
         default:
           log.error(`Unsupported ${element.language}`);
           throw new Error(`Unsupported ${element.language}`);
@@ -258,6 +263,13 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       debugLogger.debug(
         `The bundling process finished successfully for file ${element.path}.`
       );
+
+      // .jar files cannot be parsed by AWS Lambda, skip this step for AWS Lambda
+      if(element.language === ".kt" && (configuration.cloudProvider === "aws" || configuration.cloudProvider === undefined)) {
+        console.debug("Skipping ZIP due to .jar file")
+        console.debug(path.join(output.path, "app-standalone.jar"))
+        return { name: element.name, archivePath: path.join(output.path, "app-standalone.jar"), filePath: element.path, methods: element.methods };
+      }
 
       const archivePathTempFolder = await createTemporaryFolder();
       temporaryFolders.push(archivePathTempFolder);
