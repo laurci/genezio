@@ -1,9 +1,9 @@
 import path from 'path'
 import fs from 'fs'
-import { BundlerInput, BundlerInterface, BundlerOutput, Dependency } from "../bundler.interface.js"
-import { fileExists } from '../../utils/file.js';
+import {BundlerInput, BundlerInterface, BundlerOutput, Dependency} from "../bundler.interface.js"
+import {fileExists} from '../../utils/file.js';
 import log from "loglevel";
-import { debugLogger } from '../../utils/logging.js';
+import {debugLogger} from '../../utils/logging.js';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import exec from "await-exec";
@@ -16,9 +16,8 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
         const binaryDependencies = [];
 
         if (!fs.existsSync(nodeModulesPath)) {
-            fs.mkdirSync(nodeModulesPath, { recursive: true });
+            fs.mkdirSync(nodeModulesPath, {recursive: true});
         }
-
         // copy all dependencies to node_modules folder
         for (const dependency of dependenciesInfo) {
             const dependencyPath = path.join(nodeModulesPath, dependency.name);
@@ -71,10 +70,10 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
 
         for (const dependency of binaryDependencies) {
             try {
-                const { stdout, stderr } = await exec(
+                const {stdout, stderr} = await exec(
                     "npx node-pre-gyp --update-binary --fallback-to-build --target_arch=arm64 --target_platform=linux --target_libc=glibc clean install " +
                     dependency.name,
-                    { cwd: dependency.path }
+                    {cwd: dependency.path}
                 );
                 debugLogger.debug("[BinaryDepStdOut]", stdout);
                 debugLogger.debug("[BinaryDepStdErr]", stderr);
@@ -87,7 +86,6 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
             }
         }
     }
-
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         if (!input.extra.dependenciesInfo) {
             debugLogger.debug(`[NodeJSBinaryDependenciesBundler] No dependencies info for file ${input.path}... Something might be wrong.`)
