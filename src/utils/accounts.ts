@@ -5,6 +5,12 @@ import fs from "fs";
 import { debugLogger } from "./logging.js";
 
 export async function getAuthToken(): Promise<string|undefined> {
+    // Check if GENEZIO_TOKEN is set
+    if (process.env.GENEZIO_TOKEN) {
+        debugLogger.debug("Using GENEZIO_TOKEN from environment variable")
+        const result = process.env.GENEZIO_TOKEN.trim();
+        return result
+    }
     const homeDirectory = os.homedir();
     const loginConfigFilePath = path.join(homeDirectory, ".geneziorc")
     try {
@@ -14,6 +20,7 @@ export async function getAuthToken(): Promise<string|undefined> {
         debugLogger.debug(`An error occured during getAuthToken ${error}`)
         return undefined;
     }
+
 }
 
 export async function saveAuthToken(token: string) {
