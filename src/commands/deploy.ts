@@ -75,12 +75,13 @@ export async function deployCommand(options: GenezioDeployOptions) {
     }
   }
 
+
   const cloudAdapter = getCloudProvider(
     configuration.cloudProvider || CloudProviderIdentifier.AWS
   );
 
   if (!options.frontend || options.backend) {
-    if (configuration.classes.length === 0) {
+    if (configuration.classes.length === 0 ) {
       log.error(
         "No classes were found in your genezio.yaml. Add some to be able to deploy your backend."
       );
