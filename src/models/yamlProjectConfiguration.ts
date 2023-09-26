@@ -185,20 +185,14 @@ export class YamlClassConfiguration {
 
 export class YamlFunctionConfiguration {
   path: string;
-  type: TriggerType;
   language: string;
-  name?: string;
 
   constructor(
     path: string,
-    type: TriggerType,
     language: string,
-    name?: string
   ) {
     this.path = path;
-    this.type = type;
     this.language = language;
-    this.name = name;
   }
 
   static async create(
@@ -208,34 +202,12 @@ export class YamlFunctionConfiguration {
       throw new Error("Path is missing from class.");
     }
 
-    if (
-      functionConfigurationYaml.type &&
-      !TriggerType[functionConfigurationYaml.type as keyof typeof TriggerType]
-    ) {
-      const triggerTypes: string = Object.keys(TriggerType).join(", ");
-      throw new Error(
-        "Specified class type for " +
-        functionConfigurationYaml.path +
-          " is incorrect. Accepted values: " +
-          triggerTypes +
-          "."
-      );
-    }
-
-    let triggerType = TriggerType.jsonrpc;
-
-    if (functionConfigurationYaml.type) {
-      triggerType =
-        TriggerType[functionConfigurationYaml.type as keyof typeof TriggerType];
-    }
-
     const language = path.parse(functionConfigurationYaml.path).ext;
 
     return new YamlFunctionConfiguration(
       functionConfigurationYaml.path,
-      triggerType,
+      
       language,
-      functionConfigurationYaml.name
     );
   }
 }
@@ -286,7 +258,7 @@ export class YamlProjectConfiguration {
   cloudProvider?: CloudProviderIdentifier;
   options?: NodeOptions;
   classes: YamlClassConfiguration[];
-  functions: YamlFunctionConfiguration[];
+  soloFunction?: YamlFunctionConfiguration;
   frontend?: YamlFrontend;
   scripts?: YamlScriptsConfiguration;
   plugins?: YamlPluginsConfiguration;
@@ -297,7 +269,7 @@ export class YamlProjectConfiguration {
     sdk: YamlSdkConfiguration | undefined = undefined,
     cloudProvider: CloudProviderIdentifier,
     classes: YamlClassConfiguration[],
-    functions: YamlFunctionConfiguration[],
+    soloFunction: YamlFunctionConfiguration | undefined = undefined,
     frontend: YamlFrontend | undefined = undefined,
     scripts: YamlScriptsConfiguration | undefined = undefined,
     plugins: YamlPluginsConfiguration | undefined = undefined,
@@ -308,7 +280,7 @@ export class YamlProjectConfiguration {
     this.sdk = sdk;
     this.cloudProvider = cloudProvider;
     this.classes = classes;
-    this.functions = functions;
+    this.soloFunction = soloFunction;
     this.frontend = frontend;
     this.scripts = scripts;
     this.plugins = plugins;
@@ -327,16 +299,7 @@ export class YamlProjectConfiguration {
     return classConfiguration;
   }
 
-  getFunctionConfiguration(path: string): YamlFunctionConfiguration{
-    const functionConfiguration = this.functions?.find(
-      (functionConfiguration) => functionConfiguration.path === path
-    )
-    if(!functionConfiguration){
-      throw new Error("Function configuration not found for path " + path);
-    }
 
-    return functionConfiguration
-  }
 
   static async create(
     configurationFileContent: any
@@ -356,7 +319,7 @@ export class YamlProjectConfiguration {
 
     let sdk: YamlSdkConfiguration | undefined;
     let classes: YamlClassConfiguration[] = [];
-    let functions: YamlFunctionConfiguration[] = [];
+    let soloFunction: YamlFunctionConfiguration | undefined;
     if (
       configurationFileContent.options &&
       configurationFileContent.options.nodeRuntime &&
@@ -393,6 +356,7 @@ export class YamlProjectConfiguration {
 
     const unparsedClasses: any[] = configurationFileContent.classes;
 
+
     // check if unparsedClasses is an array
     if (unparsedClasses && !Array.isArray(unparsedClasses)) {
       throw new Error("The classes property must be an array.");
@@ -404,16 +368,12 @@ export class YamlProjectConfiguration {
       );
     }
 
-    const unparsedFunctions: any[] = configurationFileContent.functions;
-    if (unparsedFunctions && !Array.isArray(unparsedFunctions)) {
-      throw new Error("The functions property must be an array.");
+    const unparsedFunction: any | undefined = configurationFileContent.soloFunction
+
+    if(unparsedFunction){
+      soloFunction = await YamlFunctionConfiguration.create(unparsedFunction)
     }
 
-    if (unparsedFunctions && Array.isArray(unparsedFunctions)) {
-      functions = await Promise.all(
-        unparsedFunctions.map((c) => YamlFunctionConfiguration.create(c))
-      );
-    }
 
     if (
       configurationFileContent.plugins?.astGenerator &&
@@ -462,7 +422,7 @@ export class YamlProjectConfiguration {
       sdk,
       configurationFileContent.cloudProvider || CloudProviderIdentifier.GENEZIO,
       classes,
-      functions,
+      soloFunction,
       configurationFileContent.frontend,
       scripts,
       plugins,

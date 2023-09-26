@@ -43,4 +43,5 @@ export type CloudAdapterOptions = {
 export interface CloudAdapter {
     deploy(input: GenezioCloudInput[], projectConfiguration: ProjectConfiguration, cloudAdapterOptions: CloudAdapterOptions): Promise<GenezioCloudOutput>;
     deployFrontend(projectName: string, projectRegion: string, frontend: YamlFrontend, stage: string): Promise<string>;
+    deployFunction(input: GenezioCloudInput[], projectConfiguration: ProjectConfiguration, cloudAdapterOptions: CloudAdapterOptions): Promise<GenezioCloudOutput>;
 }

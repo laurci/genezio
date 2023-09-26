@@ -94,6 +94,24 @@ export async function zipDirectory(
   });
 }
 
+export async function zipFile(
+  sourceFile: string,
+  outPath: string
+): Promise<void> {
+  const archive = archiver("zip", { zlib: { level: 9 } });
+  const stream = fs.createWriteStream(outPath);
+
+  return new Promise((resolve, reject) => {
+    archive
+      .file(sourceFile,{name: sourceFile})
+      .on("error", (err: any) => reject(err))
+      .pipe(stream);
+
+    stream.on("close", () => resolve());
+    archive.finalize();
+  });
+}
+
 export async function zipDirectoryToDestinationPath(
   sourceDir: string,
   destinationPath: string,

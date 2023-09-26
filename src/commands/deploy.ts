@@ -11,6 +11,7 @@ import { REACT_APP_BASE_URL } from "../constants.js";
 import {
   GENEZIO_NOT_AUTH_ERROR_MSG,
   GENEZIO_NO_CLASSES_FOUND,
+  GNEEZIO_NO_FUNCTIONS_FOUND
 } from "../errors.js";
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
@@ -28,6 +29,7 @@ import {
   deleteFolder,
   getBundleFolderSizeLimit,
   readEnvironmentVariablesFile,
+  zipFile,
 } from "../utils/file.js";
 import { printAdaptiveLog, debugLogger } from "../utils/logging.js";
 import { runNewProcess } from "../utils/process.js";
@@ -36,6 +38,8 @@ import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { generateRandomSubdomain } from "../utils/yaml.js";
 import cliProgress from "cli-progress";
 import {
+  TriggerType,
+  YamlClassConfiguration,
   YamlProjectConfiguration,
 } from "../models/yamlProjectConfiguration.js";
 import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter.js";
@@ -79,6 +83,64 @@ export async function deployCommand(options: GenezioDeployOptions) {
   const cloudAdapter = getCloudProvider(
     configuration.cloudProvider || CloudProviderIdentifier.AWS
   );
+
+  if(options.soloFunction){
+    log.error("We got here at least")
+    if(!configuration.soloFunction){
+      log.error(
+        "No function was found in your genezio.yaml."
+      );  
+    }
+    else{
+      GenezioTelemetry.sendEvent({
+        eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
+        cloudProvider: configuration.cloudProvider,
+        commandOptions: JSON.stringify(options),
+      });
+      await deployFunction(configuration, cloudAdapter, options).catch(
+        async (error: AxiosError) => {
+          GenezioTelemetry.sendEvent({
+            eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_ERROR,
+            errorTrace: error.toString(),
+            commandOptions: JSON.stringify(options),
+          });
+
+          switch (error.response?.status) {
+            case 401:
+              log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
+              break;
+            case 500:
+              log.error(error.message);
+              if (error.response?.data) {
+                const data: any = error.response?.data;
+                log.error(data.error?.message);
+              }
+              break;
+            case 400:
+              log.error(error.message);
+              if (error.response?.data) {
+                const data: any = error.response?.data;
+                log.error(data.error?.message);
+              }
+              break;
+            default:
+              if (error.message) {
+                log.error(error.message);
+              }
+              break;
+          }
+          exit(1);
+        }
+      );
+      GenezioTelemetry.sendEvent({
+        eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
+        cloudProvider: configuration.cloudProvider,
+        commandOptions: JSON.stringify(options),
+      });
+
+    }
+    exit(1)
+  }
 
   if (!options.frontend || options.backend) {
     if (configuration.classes.length === 0 ) {
@@ -230,6 +292,73 @@ export async function deployCommand(options: GenezioDeployOptions) {
       }
     }
   }
+}
+
+export async function deployFunction(
+  configuration: YamlProjectConfiguration,
+  cloudAdapter: CloudAdapter,
+  options: GenezioDeployOptions
+) {
+  if (!configuration.soloFunction) {
+    return;
+  }
+  else{
+    const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
+      configuration
+    ).catch((error) => {
+      // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
+      if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
+        log.error("Syntax error:");
+        log.error(`Reason Code: ${error.reasonCode}`);
+        log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
+  
+        throw error;
+      }
+  
+      throw error;
+    });
+  
+    log.error(JSON.stringify(configuration))
+    configuration.classes = [new YamlClassConfiguration("soloFunctionTest.js",TriggerType.jsonrpc ,".js",[])]
+  
+    const projectConfiguration = new ProjectConfiguration(
+      configuration,
+      sdkResponse
+    );
+  
+  
+  
+    const stage: string = options.stage || "prod";
+    const installDeps: boolean = options.installDeps || false;
+  
+    const archivePathTempFolder = await createTemporaryFolder();
+    const archivePath = path.join(archivePathTempFolder, `genezioDeploy.zip`);
+  
+    debugLogger.debug(`Zip the file ${configuration.soloFunction?.path}.`);
+    await zipFile(configuration.soloFunction?.path || "", archivePath);
+  
+    const functionReady:any = {
+      archivePath: archivePath,
+      filePath: configuration.soloFunction?.path || "",
+      methods: [],
+      unzippedBundleSize: 10,
+      dependenciesInfo: undefined,
+      allNonJsFilesPaths: undefined,
+    };
+  
+    log.error("we got here 2")
+  
+    const result = await cloudAdapter.deployFunction([functionReady] as any, projectConfiguration, {
+      stage: stage,
+    });
+  
+    
+    log.error("the result is ")
+    // log.error(JSON.stringify(result))
+  }
+
+
+
 }
 
 export async function deployClasses(

@@ -103,6 +103,7 @@ program
   .option("--install-deps", "Automatically install missing dependencies.", false)
   .option("--env <envFile>", "Load environment variables from a given file.", undefined)
   .option("--stage <stage>", "Stage to deploy to. Default: 'production'.")
+  .option("--soloFunction", "choose if you want to deploy a single function.", false)
   .description(`Deploy your project to the genezio infrastructure. Use --frontend to deploy only the frontend application.
 Use --backend to deploy only the backend application.`)
   .action(async (options: GenezioDeployOptions) => {

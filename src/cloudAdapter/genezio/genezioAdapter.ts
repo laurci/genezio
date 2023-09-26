@@ -87,7 +87,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
                    console.log(dependenciesTable.toString());
                    console.log(filesTable.toString());
                    throw new Error(`
-Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFixed(
+                    Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFixed(
                      2
                    )}MB. The maximum size is ${
                      BUNDLE_SIZE_LIMIT / 1048576
@@ -98,12 +98,15 @@ Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFix
             debugLogger.debug(
                 `Get the presigned URL for class name ${element.name}.`
             );
+            log.error("we got here in genezio adapter 1")
             const resultPresignedUrl = await getPresignedURL(
                 projectConfiguration.region,
                 "genezioDeploy.zip",
                 projectConfiguration.name,
                 element.name
             )
+            log.error("we got here in genezio adapter 2")
+
 
             const size = await getFileSize(element.archivePath);
             if (size > BUNDLE_SIZE_LIMIT) {
@@ -130,8 +133,142 @@ Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFix
         // The loading spinner is removing lines and with this we avoid clearing a progress bar.
         // This can be removed only if we find a way to avoid clearing lines.
         log.info("")
-
+        log.error("we got here in genezio adapter 3")
         const response = await deployRequest(projectConfiguration, stage)
+        log.error("we got here in genezio adapter 4")
+
+        const classesInfo = response.classes.map((c) => ({
+            className: c.name,
+            methods: c.methods.map((m) => ({
+                name: m.name,
+                type: m.type,
+                cronString: m.cronString,
+                functionUrl: getFunctionUrl(c.cloudUrl, m.type, c.name, m.name),
+            })),
+            functionUrl: getClassFunctionUrl(c.cloudUrl, projectConfiguration.cloudProvider, c.name),
+            projectId: response.projectId
+        }));
+
+        return {
+            classes: classesInfo,
+        };
+    }
+
+    async deployFunction(input: GenezioCloudInput[], projectConfiguration: ProjectConfiguration, cloudAdapterOptions: CloudAdapterOptions): Promise<GenezioCloudOutput> {
+        const stage: string = cloudAdapterOptions.stage || "";
+
+        log.info("Deploying your backend project to genezio infrastructure...");
+        const multibar = new cliProgress.MultiBar({
+            clearOnComplete: false,
+            hideCursor: true,
+            format: 'Uploading {filename}: {bar} | {value}% | {eta_formatted}',
+        }, cliProgress.Presets.shades_grey);
+
+        const promisesDeploy = input.map(async (element) => {
+            const { dependenciesInfo, allNonJsFilesPaths } = element;
+            
+                 if (element.unzippedBundleSize > BUNDLE_SIZE_LIMIT) {
+                    // Throw this error if bundle size is too big and the user is not using js or ts files.
+                    if (!dependenciesInfo) {
+                        throw new Error(
+                          `Your class ${element.name} is too big: ${element.unzippedBundleSize} bytes. The maximum size is 250MB. Try to reduce the size of your class.`
+                        );
+                    }
+
+                      const allfilesSize = await calculateBiggestFiles(
+                        dependenciesInfo,
+                        allNonJsFilesPaths
+                      );
+
+                   const dependenciesTable = new Table({
+                     head: ["Biggest Dependencies", "Size"],
+                   });
+
+                   const filesTable = new Table({
+                     head: [`Biggest Non-${projectConfiguration.classes[0].language.split(".")[1].toUpperCase()} Files`, "Size"],
+                   });
+
+                   const maxLength = Math.max(
+                     allfilesSize.dependenciesSize.length,
+                     allfilesSize.filesSize.length
+                   );
+
+                   for (let i = 0; i < maxLength; i++) {
+                     const formatedDep: string = allfilesSize.dependenciesSize[i]
+                       ? allfilesSize.dependenciesSize[i]
+                       : "";
+                     const formatedNonJsFile: string = allfilesSize.filesSize[i]
+                       ? allfilesSize.filesSize[i]
+                       : "";
+
+                        if (formatedDep.split("->")[0] && formatedDep.split("->")[1]){
+                           dependenciesTable.push([
+                             formatedDep.split("->")[0],
+                             formatedDep.split("->")[1],
+                           ]);
+                        }
+
+                        if(formatedNonJsFile.split("->")[0] && formatedNonJsFile.split("->")[1]){
+                           filesTable.push([
+                             formatedNonJsFile.split("->")[0],
+                             formatedNonJsFile.split("->")[1],
+                           ]);
+                        }
+                    
+                   }
+
+                   console.log(dependenciesTable.toString());
+                   console.log(filesTable.toString());
+                   throw new Error(`
+                    Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFixed(
+                     2
+                   )}MB. The maximum size is ${
+                     BUNDLE_SIZE_LIMIT / 1048576
+                   }MB. Try to reduce the size of your class.
+            `);
+                 }
+
+            debugLogger.debug(
+                `Get the presigned URL for class name ${element.name}.`
+            );
+            log.error("we got here in genezio adapter 1")
+            const resultPresignedUrl = await getPresignedURL(
+                projectConfiguration.region,
+                "genezioDeploy.zip",
+                projectConfiguration.name,
+                "soloFunction"
+            )
+            log.error("we got here in genezio adapter 2")
+
+
+            const size = await getFileSize(element.archivePath);
+            if (size > BUNDLE_SIZE_LIMIT) {
+                throw new Error(`Your class ${element.name} is too big: ${size} bytes. The maximum size is 250MB. Try to reduce the size of your class.`);
+            }
+
+            const bar = multibar.create(100, 0, { filename: element.name });
+            debugLogger.debug(`Upload the content to S3 for file ${element.filePath}.`)
+            await uploadContentToS3(resultPresignedUrl.presignedURL, element.archivePath, (percentage) => {
+                bar.update(parseFloat((percentage * 100).toFixed(2)), { filename: element.name });
+
+                if (percentage == 1) {
+                    bar.stop();
+                }
+            })
+
+            debugLogger.debug(`Done uploading the content to S3 for file ${element.filePath}.`)
+        }
+        );
+
+        // wait for all promises to finish
+        await Promise.all(promisesDeploy);
+        multibar.stop()
+        // The loading spinner is removing lines and with this we avoid clearing a progress bar.
+        // This can be removed only if we find a way to avoid clearing lines.
+        log.info("")
+        log.error("we got here in genezio adapter 3")
+        const response = await deployRequest(projectConfiguration, stage)
+        log.error("we got here in genezio adapter 4")
 
         const classesInfo = response.classes.map((c) => ({
             className: c.name,

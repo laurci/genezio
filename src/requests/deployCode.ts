@@ -8,6 +8,7 @@ import { printUninformativeLog, printAdaptiveLog } from "../utils/logging.js";
 import { AbortController } from "node-abort-controller";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import version from "../utils/version.js";
+import { log } from "loglevel";
 
 export async function deployRequest(
   projectConfiguration: ProjectConfiguration,
@@ -33,8 +34,14 @@ export async function deployRequest(
     stage: stage
   })
 
+  console.log(json)
+
+
+
   const controller = new AbortController();
   const messagePromise = printUninformativeLog(controller);
+  console.log("we got here in deploy code 1")
+  console.log(JSON.stringify(json))
   const response: any = await axios({
     method: "PUT",
     url: `${BACKEND_ENDPOINT}/core/deployment`,

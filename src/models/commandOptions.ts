@@ -8,6 +8,7 @@ export type GenezioLocalOptions = {
 }
 
 export type GenezioDeployOptions = {
+    soloFunction?: boolean
     backend?: boolean,
     frontend?: boolean,
     logLevel?: string,

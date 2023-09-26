@@ -282,6 +282,140 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
       classes: classes,
     }
   }
+  async deployFunction(input: GenezioCloudInput[], projectConfiguration: ProjectConfiguration, cloudAdapterOptions: CloudAdapterOptions): Promise<GenezioCloudOutput> {
+    const stage: string = cloudAdapterOptions.stage || "prod";
+
+    const cloudFormationClient = new CloudFormationClient({ region: projectConfiguration.region });
+    const s3Client = new S3({ region: projectConfiguration.region });
+    const cloudFormationStage = stage === "prod" ? "" : `-${stage}`;
+    const stackName = `genezio-${projectConfiguration.name}${cloudFormationStage}`;
+    const { exists } = await this.#checkIfStackExists(cloudFormationClient, stackName);
+
+    const credentials = await s3Client.config.credentials();
+    if (!credentials) {
+      throw new Error("AWS credentials not found");
+    }
+    log.info(`Deploying your backend project to the account represented by access key ID ${credentials.accessKeyId}...`);
+
+    const apiGatewayResourceName = `ApiGateway${alphanumericString(projectConfiguration.name)}`;
+    const apiGatewayName = `${projectConfiguration.name}`;
+    const cloudFormationTemplate = new GenezioCloudFormationBuilder();
+    cloudFormationTemplate.addResource("GenezioDeploymentBucket", getS3BucketResource());
+    cloudFormationTemplate.addResource("GenezioDeploymentBucketPolicy", getS3BucketPolicyResource());
+    cloudFormationTemplate.addOutput("GenezioDeploymentBucketName", { "Ref": "GenezioDeploymentBucket" });
+
+    // Check if stack already exists. If it already exists, we need to send a describe-stack command to get the bucket name.
+    // If the stack does not exists, we need to first create a stack with just one s3 resource.
+    if (!exists) {
+      debugLogger.debug("The backend stack does not exists. Creating a new stack...")
+      const createStackTemplate = cloudFormationTemplate.build();
+      await cloudFormationClient.send(new CreateStackCommand({
+        StackName: stackName,
+        TemplateBody: createStackTemplate,
+        Capabilities: ["CAPABILITY_IAM"],
+      }));
+
+      await waitUntilStackCreateComplete({
+        client: cloudFormationClient,
+        maxWaitTime: 360,
+      }, {
+        StackName: stackName,
+      });
+    }
+    const bucketName = await this.#getValueForKeyFromOutput(cloudFormationClient, stackName, "GenezioDeploymentBucketName");
+
+    const uploadFilesPromises = input.map(async (inputItem) => {
+      if (inputItem.unzippedBundleSize > BUNDLE_SIZE_LIMIT) {
+        throw new Error(`Class ${inputItem.name} is too big: ${(inputItem.unzippedBundleSize/1048576).toFixed(2)}MB. The maximum size is ${BUNDLE_SIZE_LIMIT/1048576}MB. Try to reduce the size of your class.`);
+    }
+
+      const bucketKey = this.#getBackendBucketKey(projectConfiguration.name, inputItem.name);
+
+      const size = await getFileSize(inputItem.archivePath);
+      if (size > BUNDLE_SIZE_LIMIT) {
+        throw new Error(`Your class ${inputItem.name} is too big: ${size} bytes. The maximum size is 250MB. Try to reduce the size of your class.`);
+      }
+
+      log.info(`Uploading class ${inputItem.name} to S3...`)
+      return this.#uploadFileToS3(s3Client, bucketName, bucketKey, inputItem.archivePath);
+    })
+
+    await Promise.all(uploadFilesPromises);
+
+    for (const inputItem of input) {
+      const classConfiguration = projectConfiguration.classes.find((c) => c.path === inputItem.filePath);
+      const bucketKey = this.#getBackendBucketKey(projectConfiguration.name, inputItem.name);
+      const lambdaFunctionResourceName = `LambdaFunction${alphanumericString(inputItem.name)}`;
+      const lambdaFunctionName = `${projectConfiguration.name.toLowerCase()}-${inputItem.name.toLowerCase()}${cloudFormationStage}`;
+      const invokePermissionResourceName = `LambdaInvokePermission${alphanumericString(inputItem.name)}`;
+      const routeResourceName = `Route${alphanumericString(inputItem.name)}`;
+      const integrationResourceName = `Integration${alphanumericString(inputItem.name)}`;
+      const roleResourceName = `Role${alphanumericString(inputItem.name)}`;
+
+      // Create the LambdaInvokePermission
+      cloudFormationTemplate.addResource(invokePermissionResourceName, getLambdaPermissionResource(lambdaFunctionResourceName, apiGatewayResourceName));
+
+      // Create the route
+      classConfiguration?.methods.filter((m) => m.type === "http").forEach((m) => {
+        cloudFormationTemplate.addResource(
+          routeResourceName + m.name,
+          getApiGatewayRouteResource(apiGatewayResourceName, `ANY /${inputItem.name}/${m.name}`, integrationResourceName),);
+      });
+
+      cloudFormationTemplate.addResource(routeResourceName,
+        getApiGatewayRouteResource(apiGatewayResourceName, `ANY /${inputItem.name}`, integrationResourceName),);
+
+      // Create the integration
+      cloudFormationTemplate.addResource(integrationResourceName, getApiGatewayIntegrationResource(apiGatewayResourceName, lambdaFunctionResourceName));
+      // Create the lambda function
+      const runtime = this.#getFunctionRuntime(classConfiguration!.language);
+      const latestObjectVersion = (await this.#getLatestObjectVersion(s3Client, bucketName, bucketKey))!;
+      cloudFormationTemplate.addResource(lambdaFunctionResourceName,
+        getLambdaFunctionResource(lambdaFunctionName, runtime, roleResourceName, bucketName, bucketKey, latestObjectVersion)
+      );
+      // Create the lambda execution role
+      cloudFormationTemplate.addResource(roleResourceName, getIamRoleResource());
+
+      for (const method of inputItem.methods) {
+        if (method.type === "cron") {
+          const cronResourceName = `Cron${alphanumericString(inputItem.name)}${alphanumericString(method.name)}`;
+          const lambdaPermissionName = `LambdaPermission${alphanumericString(inputItem.name)}${alphanumericString(method.name)}`;
+          const cronString = this.#cronToAWSCron(method.cronString!);
+          cloudFormationTemplate.addResource(cronResourceName,
+            getEventsRoleResource(`cron(${cronString})`, lambdaFunctionResourceName, `target_id_${method.name}`, `{"genezioEventType": "cron", "cronString": "${cronString}", "methodName": "${method.name}"}`)
+          );
+
+          cloudFormationTemplate.addResource(lambdaPermissionName, getLambdaPermissionForEventsResource(lambdaFunctionResourceName, cronResourceName));
+        }
+      }
+    }
+
+    cloudFormationTemplate.addDefaultResourcesForBackendDeployment(apiGatewayResourceName, apiGatewayName);
+    const templateResult = cloudFormationTemplate.build();
+
+    debugLogger.debug(templateResult);
+    // Once we have the template, we can create or update the CloudFormation stack.
+    await this.#updateStack(cloudFormationClient, templateResult, stackName);
+    const classes = [];
+    const apiGatewayUrl = await this.#getValueForKeyFromOutput(cloudFormationClient, stackName, "ApiUrl");
+
+    for (const inputItem of input) {
+      classes.push({
+        className: inputItem.name,
+        methods: inputItem.methods.map((method) => ({
+          name: method.name,
+          type: method.type,
+          cronString: method.cronString,
+          functionUrl: getFunctionUrl(`${apiGatewayUrl}`, method.type, inputItem.name, method.name)
+        })),
+        functionUrl: `${apiGatewayUrl}/${inputItem.name}`,
+      })
+    }
+
+    return {
+      classes: classes,
+    }
+  }
 
   async deployFrontend(projectName: string, projectRegion: string, frontend: YamlFrontend, stage: string): Promise<string> {
     stage = stage || "prod";
