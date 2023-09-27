@@ -41,7 +41,6 @@ export async function deployRequest(
   const controller = new AbortController();
   const messagePromise = printUninformativeLog(controller);
   console.log("we got here in deploy code 1")
-  console.log(JSON.stringify(json))
   const response: any = await axios({
     method: "PUT",
     url: `${BACKEND_ENDPOINT}/core/deployment`,

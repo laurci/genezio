@@ -98,14 +98,12 @@ export class GenezioCloudAdapter implements CloudAdapter {
             debugLogger.debug(
                 `Get the presigned URL for class name ${element.name}.`
             );
-            log.error("we got here in genezio adapter 1")
             const resultPresignedUrl = await getPresignedURL(
                 projectConfiguration.region,
                 "genezioDeploy.zip",
                 projectConfiguration.name,
                 element.name
             )
-            log.error("we got here in genezio adapter 2")
 
 
             const size = await getFileSize(element.archivePath);
@@ -133,9 +131,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         // The loading spinner is removing lines and with this we avoid clearing a progress bar.
         // This can be removed only if we find a way to avoid clearing lines.
         log.info("")
-        log.error("we got here in genezio adapter 3")
         const response = await deployRequest(projectConfiguration, stage)
-        log.error("we got here in genezio adapter 4")
 
         const classesInfo = response.classes.map((c) => ({
             className: c.name,
@@ -231,14 +227,12 @@ export class GenezioCloudAdapter implements CloudAdapter {
             debugLogger.debug(
                 `Get the presigned URL for class name ${element.name}.`
             );
-            log.error("we got here in genezio adapter 1")
             const resultPresignedUrl = await getPresignedURL(
                 projectConfiguration.region,
                 "genezioDeploy.zip",
                 projectConfiguration.name,
-                "soloFunction"
+                "soloFunctionTest"
             )
-            log.error("we got here in genezio adapter 2")
 
 
             const size = await getFileSize(element.archivePath);
@@ -266,18 +260,11 @@ export class GenezioCloudAdapter implements CloudAdapter {
         // The loading spinner is removing lines and with this we avoid clearing a progress bar.
         // This can be removed only if we find a way to avoid clearing lines.
         log.info("")
-        log.error("we got here in genezio adapter 3")
         const response = await deployRequest(projectConfiguration, stage)
-        log.error("we got here in genezio adapter 4")
 
         const classesInfo = response.classes.map((c) => ({
             className: c.name,
-            methods: c.methods.map((m) => ({
-                name: m.name,
-                type: m.type,
-                cronString: m.cronString,
-                functionUrl: getFunctionUrl(c.cloudUrl, m.type, c.name, m.name),
-            })),
+            methods:[],
             functionUrl: getClassFunctionUrl(c.cloudUrl, projectConfiguration.cloudProvider, c.name),
             projectId: response.projectId
         }));

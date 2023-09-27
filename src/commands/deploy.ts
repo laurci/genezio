@@ -13,7 +13,7 @@ import {
   GENEZIO_NO_CLASSES_FOUND,
   GNEEZIO_NO_FUNCTIONS_FOUND
 } from "../errors.js";
-import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
+import { functionSdkGeneratorApiHandler, sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import { getAuthToken } from "../utils/accounts.js";
@@ -85,7 +85,6 @@ export async function deployCommand(options: GenezioDeployOptions) {
   );
 
   if(options.soloFunction){
-    log.error("We got here at least")
     if(!configuration.soloFunction){
       log.error(
         "No function was found in your genezio.yaml."
@@ -303,7 +302,8 @@ export async function deployFunction(
     return;
   }
   else{
-    const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
+    configuration.classes = [new YamlClassConfiguration("soloFunctionTest.js",TriggerType.jsonrpc ,".js",[])]
+    const sdkResponse: SdkGeneratorResponse = await functionSdkGeneratorApiHandler(
       configuration
     ).catch((error) => {
       // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
@@ -317,16 +317,13 @@ export async function deployFunction(
   
       throw error;
     });
+
   
-    log.error(JSON.stringify(configuration))
-    configuration.classes = [new YamlClassConfiguration("soloFunctionTest.js",TriggerType.jsonrpc ,".js",[])]
   
     const projectConfiguration = new ProjectConfiguration(
       configuration,
       sdkResponse
     );
-  
-  
   
     const stage: string = options.stage || "prod";
     const installDeps: boolean = options.installDeps || false;
@@ -346,15 +343,13 @@ export async function deployFunction(
       allNonJsFilesPaths: undefined,
     };
   
-    log.error("we got here 2")
-  
     const result = await cloudAdapter.deployFunction([functionReady] as any, projectConfiguration, {
       stage: stage,
     });
   
     
     log.error("the result is ")
-    // log.error(JSON.stringify(result))
+    log.error(JSON.stringify(result))
   }
 
 

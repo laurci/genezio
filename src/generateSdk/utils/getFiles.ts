@@ -24,3 +24,22 @@ export function getGenerateAstInputs(projectConfiguration: YamlProjectConfigurat
 
   return getGenerateAstInputs;
 }
+
+export function functionGetGenerateAstInputs(projectConfiguration: YamlProjectConfiguration): AstGeneratorInput[] {
+  const getGenerateAstInputs: AstGeneratorInput[] = [];
+
+    getGenerateAstInputs.push({
+      file: {
+        path: "soloFunctionTest.js",
+        data: "export class soloFunctionTest{\r\n    \r\n}",
+      },
+      class: {
+        path: "soloFunctionTest.js",
+        data: "export class soloFunctionTest{\r\n    \r\n}",
+        name: "soloFunctionTest.js",
+      }
+    } as any);
+  
+
+  return getGenerateAstInputs;
+}
