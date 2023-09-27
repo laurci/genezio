@@ -95,15 +95,30 @@ export async function zipDirectory(
 }
 
 export async function zipFile(
-  sourceFile: string,
+  sourceFile: string[],
   outPath: string
 ): Promise<void> {
   const archive = archiver("zip", { zlib: { level: 9 } });
   const stream = fs.createWriteStream(outPath);
+  const zipDirectoryReady = sourceFile.map(async (element)=>{
+
+    let stream = fs.createWriteStream(outPath)
+    await new Promise<void>((resolve, reject) => {
+      archive
+        .file(sourceFile[0],{name: sourceFile[0]})
+        .on("error", (err: any) => reject(err))
+        .pipe(stream);
+      
+      stream.on("close", ()=>resolve())
+  })
+
+  })
+
+  await Promise.all(zipDirectoryReady)
 
   return new Promise((resolve, reject) => {
     archive
-      .file(sourceFile,{name: sourceFile})
+      .directory("node_modules","node_modules")
       .on("error", (err: any) => reject(err))
       .pipe(stream);
 

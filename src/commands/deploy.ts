@@ -1,5 +1,5 @@
 import { AxiosError } from "axios";
-import log from "loglevel";
+import log, { error } from "loglevel";
 import path from "path";
 import { exit } from "process";
 import { BundlerInterface } from "../bundlers/bundler.interface.js";
@@ -54,6 +54,7 @@ import {
 } from "../telemetry/telemetry.js";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 import { setEnvironmentVariables } from "../requests/setEnvironmentVariables.js";
+import fs from "fs";
 
 export async function deployCommand(options: GenezioDeployOptions) {
   let configuration;
@@ -327,12 +328,30 @@ export async function deployFunction(
   
     const stage: string = options.stage || "prod";
     const installDeps: boolean = options.installDeps || false;
-  
+
+    const tmpFolder = await createTemporaryFolder();
+    const packageJson = path.join(tmpFolder,`package.json`)
+    const packageLock = path.join(tmpFolder,`package-lock.json`)
+    const soloFunctionPath = path.join(tmpFolder,configuration.soloFunction?.path || "")
+    const nodeMod = path.join(tmpFolder,`node_modules`)
+    await fs.copyFile("package.json",packageJson,(err:any)=>{
+    })
+    await fs.copyFile("package-lock.json",packageLock,(err:any)=>{
+      
+    })
+    await fs.copyFile(configuration.soloFunction?.path || "",soloFunctionPath,(err:any)=>{
+      
+    })
+    fs.cpSync("node_modules",nodeMod, {recursive:true})
+    
+    
+
     const archivePathTempFolder = await createTemporaryFolder();
     const archivePath = path.join(archivePathTempFolder, `genezioDeploy.zip`);
   
     debugLogger.debug(`Zip the file ${configuration.soloFunction?.path}.`);
-    await zipFile(configuration.soloFunction?.path || "", archivePath);
+    await zipDirectory(tmpFolder,archivePath)
+    // await zipDirectory("node_modules",archivePath)
   
     const functionReady:any = {
       archivePath: archivePath,
@@ -347,9 +366,7 @@ export async function deployFunction(
       stage: stage,
     });
   
-    
-    log.error("the result is ")
-    log.error(JSON.stringify(result))
+  
   }
 
 
