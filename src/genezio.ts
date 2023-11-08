@@ -19,6 +19,7 @@ import { GenezioDeployOptions, GenezioLocalOptions } from "./models/commandOptio
 import currentGenezioVersion, { logOutdatedVersion } from "./utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
 import { genezioCommand } from "./commands/superGenezio.js";
+import { generateDbCommand } from "./commands/generateDb.js";
 
 const program = new Command();
 
@@ -314,5 +315,50 @@ program
         });
         await logOutdatedVersion();
     });
+
+// genezio generate model command experimental
+program
+    .command("generate-model")
+    .argument("[language]", "Language of the model you want to generate.")
+    .argument("[modelInfo]", "Name of the model you want to generate.")
+    .argument("[jsType]", "Type of the model you want to generate. esm or commonjs.")
+    .argument("[dbframework]", "Database framework you want to use. mongoose or sequelize.")
+    .argument("[path]", "Path to the file where the model will be generated.")
+    .option(
+        "--logLevel <logLevel>",
+        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
+    )
+    .description("Generate a model for your project.")
+    .action(
+        async (
+            language = "",
+            modelInfo = "",
+            jsType = "",
+            dbframework = "",
+            path = "",
+            options: any,
+        ) => {
+            setDebuggingLoggerLogLevel(options.logLevel);
+
+            GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_GENERATE_MODEL,
+                commandOptions: JSON.stringify(options),
+            });
+
+            await logOutdatedVersion();
+
+            await generateDbCommand(language, modelInfo, jsType, dbframework, path).catch(
+                (error: Error) => {
+                    log.error(error.message);
+                    GenezioTelemetry.sendEvent({
+                        eventType: TelemetryEventTypes.GENEZIO_GENERATE_MODEL_ERROR,
+                        errorTrace: error.message,
+                        commandOptions: JSON.stringify(options),
+                    });
+                    exit(1);
+                },
+            );
+        },
+    );
 
 export default program;
