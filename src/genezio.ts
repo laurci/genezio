@@ -328,6 +328,7 @@ program
         "--logLevel <logLevel>",
         "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
     )
+    .option("--columns <columns>", "Columns of the model you want to generate.", "")
     .description("Generate a model for your project.")
     .action(
         async (
@@ -347,17 +348,22 @@ program
 
             await logOutdatedVersion();
 
-            await generateDbCommand(language, modelInfo, jsType, dbframework, path).catch(
-                (error: Error) => {
-                    log.error(error.message);
-                    GenezioTelemetry.sendEvent({
-                        eventType: TelemetryEventTypes.GENEZIO_GENERATE_MODEL_ERROR,
-                        errorTrace: error.message,
-                        commandOptions: JSON.stringify(options),
-                    });
-                    exit(1);
-                },
-            );
+            await generateDbCommand(
+                language,
+                modelInfo,
+                jsType,
+                dbframework,
+                options.columns,
+                path,
+            ).catch((error: Error) => {
+                log.error(error.message);
+                GenezioTelemetry.sendEvent({
+                    eventType: TelemetryEventTypes.GENEZIO_GENERATE_MODEL_ERROR,
+                    errorTrace: error.message,
+                    commandOptions: JSON.stringify(options),
+                });
+                exit(1);
+            });
         },
     );
 

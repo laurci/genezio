@@ -11,6 +11,7 @@ export async function generateDbCommand(
     modelName = "",
     jsType = "",
     dbframework = "",
+    columns = "",
     _path = "",
 ) {
     if (language === undefined || language === "") {
@@ -68,6 +69,7 @@ export async function generateDbCommand(
         language: language as Languages,
         framework: dbframework as Frameworks,
         jsType: jsType as JsTypes,
+        columns: columns,
     });
 
     if (!res.success) {
