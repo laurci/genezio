@@ -49,6 +49,7 @@ import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js"
 import { getNodeModulePackageJson } from "../generateSdk/templates/packageJson.js";
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
+import { ClusterCloudAdapter } from "../cloudAdapter/cluster/clusterAdapter.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     let configuration;
@@ -603,6 +604,8 @@ function getCloudProvider(provider: string): CloudAdapter {
             return new GenezioCloudAdapter();
         case CloudProviderIdentifier.CAPYBARA_LINUX:
             return new GenezioCloudAdapter();
+        case CloudProviderIdentifier.CLUSTER:
+            return new ClusterCloudAdapter();
         case CloudProviderIdentifier.SELF_HOSTED_AWS:
             return new SelfHostedAwsAdapter();
         default:
