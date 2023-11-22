@@ -332,6 +332,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         reportSuccess(projectConfiguration, sdk, options.port, !yamlProjectConfiguration.sdk);
 
         // Start listening for changes in user's code
+        console.log(projectConfiguration);
         const { watcher } = await listenForChanges(projectConfiguration.sdk?.path);
         if (watcher) {
             watcher.close();
@@ -706,8 +707,14 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
             sdkPath = sdkPath.slice(0, -1);
         }
 
+        let newCwd = "";
+        if (cwd.includes("(")) {
+            newCwd = cwd.replaceAll("(", "");
+        }
+        console.log("CWd is ", newCwd);
         // Watch for changes in the classes and update the handlers
         const watchPaths = [path.join(cwd, "/**/*")];
+        console.log("the watch paths are", watchPaths);
         let ignoredPaths: string[] = [];
 
         if (sdkPath) {
@@ -728,6 +735,7 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
                     ignoreInitial: true,
                 })
                 .on("all", async (event: any, path: any) => {
+                    console.log("we reload");
                     if (sdkPath) {
                         if (path.includes(sdkPath)) {
                             return;
