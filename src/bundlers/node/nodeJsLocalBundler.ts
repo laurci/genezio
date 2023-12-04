@@ -1,14 +1,13 @@
 import { writeToFile } from "../../utils/file.js";
 import path from "path";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface.js";
-import { nodeContainerManifest, localNodeContainerManifest } from "../node/containerManifest.js";
-import { readFile } from "fs/promises";
-import { spawn, spawnSync } from "child_process";
+import { nodeContainerManifest } from "../node/containerManifest.js";
+import { spawnSync } from "child_process";
 import log from "loglevel";
 import { debugLogger } from "../../utils/logging.js";
 // This file is the wrapper that is used to run the user's code in a separate process.
 // It listens for messages from the parent process and runs the user's code when it receives a message.
-const localWrapperCode = `
+export const localWrapperCode = `
 import { handler as userHandler } from "./index.mjs";
 import http from "http";
 
@@ -34,6 +33,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(port, () => {
+  console.log('Server running on port ' + port);
 });
 `;
 
@@ -45,11 +45,10 @@ export class NodeJsLocalBundler implements BundlerInterface {
         // Default command and args
         let startingCommand = "node";
         let commandParameters = [path.resolve(input.path, "local.mjs")];
-
         // Write docker file for container packaging
         if (input.projectConfiguration.cloudProvider === "cluster") {
             debugLogger.log("Writing docker file for container packaging");
-            await writeToFile(input.path, "Dockerfile", localNodeContainerManifest);
+            await writeToFile(input.path, "Dockerfile", nodeContainerManifest);
             startingCommand = "docker";
 
             const dockerBuildProcess = spawnSync(
@@ -64,6 +63,7 @@ export class NodeJsLocalBundler implements BundlerInterface {
             );
             if (dockerBuildProcess.status !== 0) {
                 log.error(dockerBuildProcess.stderr);
+                log.error(dockerBuildProcess.stdout);
                 throw new Error("Docker build failed");
             }
 
