@@ -429,7 +429,10 @@ export class NodeJsBundler implements BundlerInterface {
             const dockerBuildProcess = spawnSync(
                 "docker",
                 [
+                    "buildx",
                     "build",
+                    "--load",
+                    "--platform=linux/amd64",
                     "-t",
                     input.projectConfiguration.name + "-" + input.configuration.name.toLowerCase(),
                     temporaryFolder || ".",

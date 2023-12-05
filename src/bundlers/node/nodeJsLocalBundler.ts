@@ -1,7 +1,7 @@
 import { writeToFile } from "../../utils/file.js";
 import path from "path";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface.js";
-import { nodeContainerManifest } from "../node/containerManifest.js";
+import { nodeContainerManifest } from "./containerManifest.js";
 import { spawnSync } from "child_process";
 import log from "loglevel";
 import { debugLogger } from "../../utils/logging.js";
